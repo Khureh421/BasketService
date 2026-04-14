@@ -20,7 +20,7 @@ router.post('/', async (req, res) => {
 })
 
 router.put('/:id', async (req, res) => {
-    const data = { id: req.params.id, ...req.body };
+    const data = { uuid: req.params.id, ...req.body };
 
     const [status, message] = await Book.updateBook(data);
     return res.status(status).json(message);

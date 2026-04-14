@@ -1,6 +1,11 @@
 import express from 'express';
 const router = express.Router();
 
+import * as mongodb from '../mongo.js';
+
+const DB = process.env.BASKET_DB || 'SEN300'
+const COLLECTION = process.env.USERS_COLLECTION || 'Users'
+
 function checkMissing(requiredFields, body) {
     return requiredFields.filter(field => !body[field]);
 }
@@ -16,7 +21,7 @@ router.post('/register', async (req, res) => {
         });
     }
 
-    const [status, message] = await mongodb.createLogin(req.body);
+    const [status, message] = await mongodb.createLogin(DB, COLLECTION, req.body);
     return res.status(status).send(message);
 });
 
@@ -31,7 +36,7 @@ router.post('/login', async (req, res) => {
         });
     }
 
-    const [status, token] = await mongodb.login(req.body);
+    const [status, token] = await mongodb.login(DB, COLLECTION, req.body);
     return res.status(status).json({ Bearer: token });
 })
 

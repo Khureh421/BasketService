@@ -3,15 +3,12 @@ dotenv.config();
 
 import { MongoClient, ObjectId } from 'mongodb';
 import { authenticateLogin } from './middleware/auth.js';
+import getUUID from 'uuid-by-string';
 
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 
 const client = new MongoClient(process.env.MONGO_URI);
-
-const getHash = async (password) => {
-    return bcrypt.hash(password, 10);
-}
 
 const getNextSequence = async (name, db) => {
     const result = await db.collection("counters").findOneAndUpdate(
@@ -22,23 +19,39 @@ const getNextSequence = async (name, db) => {
     return result.seq;
 };
 
+export async function exists(DB, COLLECTION, data) {
+    try {
+        await client.connect();
+
+        const db = client.db(DB);
+        const collection = db.collection(COLLECTION);
+
+        const doc = await collection.findOne(data);
+
+        return !!doc ? [200, doc.uuid] : [404, 'Not found'];
+    } catch (error) {
+        console.error(error);
+        return [500, error];
+    } finally {
+        await client.close();
+    }
+}
+
 export async function createLogin(DB, COLLECTION, data) {
     try {
         await client.connect();
 
-        const db = client.db(process.env.MONGO_DB);
-        const collection = db.collection(process.env.USERS_COLLECTION);
+        const db = client.db(DB);
+        const collection = db.collection(COLLECTION);
 
         if (await collection.findOne({ username: data.username })) {
             return [409, 'Already Exist'];
         }
 
-        const id = crypto.randomUUID();
-
         const doc = {
-            userId: id,
+            uuid: await getNextSequence('userId', db),
             username: data.username,
-            password: getHash(data.password)
+            password: await bcrypt.hash(data.password, 10)
         }
 
         await collection.insertOne(doc);
@@ -52,7 +65,7 @@ export async function createLogin(DB, COLLECTION, data) {
 }
 
 export async function login(DB, COLLECTION, data) {
-     try {
+    try {
         await client.connect();
 
         const db = client.db(DB);
@@ -61,8 +74,7 @@ export async function login(DB, COLLECTION, data) {
         const doc = await collection.findOne({ username: data.username });
 
         if (doc) {
-            const password = getHash(password);
-            if (doc.password == password) {
+            if (await bcrypt.compare(data.password, doc.password)) {
 
                 const token = authenticateLogin(doc.userId, doc.username);
                 return [200, token];
@@ -85,11 +97,13 @@ export async function createDoc(DB, COLLECTION, data) {
         const db = client.db(DB);
         const collection = db.collection(COLLECTION);
 
-        if (await collection.findOne({ title: data.title })) {
+        const key = Object.keys(data)[0];
+
+        if (await collection.findOne({ [key]: data[key] })) {
             return [409, 'Already Exist'];
         }
 
-        data = { id: await getNextSequence('id', db), ...data };
+        data = { uuid: getUUID(Object.values(data)[0]), ...data };
 
         await collection.insertOne(data);
         return [201, 'Created'];
@@ -127,22 +141,36 @@ export async function getDoc(DB, COLLECTION, data) {
     }
 }
 
-export async function updateDoc(DB, COLLECTION, data) {
+export async function updateDoc(DB, COLLECTION, data, compare = false) {
     try {
         await client.connect();
 
         const db = client.db(DB);
         const collection = db.collection(COLLECTION);
 
-        const doc = await collection.findOne({ id: Number(data.id) })
-        if (!doc) return [409, 'Not found']
+        if (compare) {
+            const { quantity, ...query } = data;
 
-        const { id, ...updateFields } = data;
+            const doc = await collection.findOne(query);
 
-        await collection.updateOne(
-            { _id: new ObjectId(doc._id) },
-            { $set: updateFields } 
-        )
+            if (!doc) return [404, 'Not found']
+
+            await collection.updateOne(
+                { _id: new ObjectId(doc._id) },
+                { $set: data }
+            )
+        } else {
+            const doc = await collection.findOne({ uuid: String(data.uuid) });
+
+            if (!doc) return [404, 'Not found']
+
+            const { uuid, ...updateFields } = data;
+
+            await collection.updateOne(
+                { _id: new ObjectId(doc._id) },
+                { $set: updateFields }
+            )
+        }
         return [200, 'Updated'];
     } catch (error) {
         console.error(error);
@@ -159,11 +187,77 @@ export async function deleteDoc(DB, COLLECTION, data) {
         const db = client.db(DB);
         const collection = db.collection(COLLECTION);
 
-        const doc = await collection.findOne({ id: Number(data.id) })
-        if (!doc) return [409, 'Not found']
-
-        await collection.deleteOne({ id: data.id });
+        await collection.deleteMany(data);
         return [200, 'Deleted'];
+    } catch (error) {
+        console.error(error);
+        return [500, error];
+    } finally {
+        await client.close();
+    }
+}
+
+export async function createOrIncrementDoc(DB, COLLECTION, data) {
+    try {
+        await client.connect();
+
+        const db = client.db(DB);
+        const collection = db.collection(COLLECTION);
+
+        const doc = await collection.findOne(data);
+
+        if (doc) {
+            await collection.updateOne(data,
+                {
+                    $inc: { quantity: 1 }
+                }
+            )
+        } else {
+            await collection.insertOne({
+                ...data,
+                quantity: 1
+            });
+        }
+        return [200, 'Added to basket']
+    } catch (error) {
+        console.error(error);
+        return [500, error];
+    } finally {
+        await client.close();
+    }
+}
+
+export async function queryCollection(DB, COLLECTION_A, COLLECTION_B, id) {
+    try {
+        await client.connect();
+
+        const db = client.db(DB);
+        const collection_a = db.collection(COLLECTION_A);
+        const collection_b = db.collection(COLLECTION_B);
+
+        const docs = await collection_a.find({ id }).toArray();
+
+        if (!docs.length) {
+            return [404, "Not found"];
+        }
+
+        const uuidToQuantity = {};
+
+        const uuids = docs.map(doc => {
+            uuidToQuantity[doc.uuid] = doc.quantity;
+            return doc.uuid;
+        });
+
+        const results = await collection_b
+            .find({ uuid: { $in: uuids } })
+            .toArray();
+
+        const enriched = results.map(item => ({
+            ...item,
+            quantity: uuidToQuantity[item.uuid] ?? 0
+        }));
+
+        return [200, enriched];
     } catch (error) {
         console.error(error);
         return [500, error];

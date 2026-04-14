@@ -2,9 +2,9 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
-export function authenticateLogin(userId, username ) {
+export function authenticateLogin(uuid, username ) {
     return jwt.sign(
-        { userId, username },
+        { uuid, username },
         JWT_SECRET
     )
 }

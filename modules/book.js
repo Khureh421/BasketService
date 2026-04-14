@@ -1,7 +1,7 @@
 import * as mongodb from '../mongo.js';
 
-const DB = process.env.MONGO_DB || 'Catalog'
-const COLLECTION = process.env.COLLECTION || 'Collection'
+const DB = process.env.BASKET_DB || 'SEN300'
+const COLLECTION = process.env.BOOK_COLLECTION || 'Books'
 
 function checkMissing(requiredFields, body) {
     return requiredFields.filter(field => !body[field]);
@@ -10,7 +10,7 @@ function checkMissing(requiredFields, body) {
 export async function addBook(data) {
     const requiredFields = ['title', 'author', 'price', 'description'];
 
-    const missing = checkMissing(requiredFields, req.body);
+    const missing = checkMissing(requiredFields, data);
     if (missing.length > 0) {
         return res.status(400).json({
             error: 'Missing required fields',
@@ -28,7 +28,7 @@ export async function getBook(data) {
 export async function updateBook(data) {
     const requiredFields = ['title', 'author', 'price', 'description'];
 
-    const missing = checkMissing(requiredFields, req.body);
+    const missing = checkMissing(requiredFields, data);
     if (missing.length > 0) {
         return res.status(400).json({
             error: 'Missing required fields',
