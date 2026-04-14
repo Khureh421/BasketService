@@ -3,8 +3,9 @@ dotenv.config();
 
 import { MongoClient, ObjectId } from 'mongodb';
 import { authenticateLogin } from './middleware/auth.js';
-import { bcrypt } from 'bcrypt';
-import { crypto } from 'crypto';
+
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 const client = new MongoClient(process.env.MONGO_URI);
 

@@ -1,0 +1,38 @@
+import express from 'express';
+const router = express.Router();
+
+function checkMissing(requiredFields, body) {
+    return requiredFields.filter(field => !body[field]);
+}
+
+router.post('/register', async (req, res) => {
+    const requiredFields = ['username', 'password'];
+    const missing = checkMissing(requiredFields, req.body);
+
+    if (missing.length > 0) {
+        return res.status(400).json({
+            error: 'Missing required fields',
+            missing
+        });
+    }
+
+    const [status, message] = await mongodb.createLogin(req.body);
+    return res.status(status).send(message);
+});
+
+router.post('/login', async (req, res) => {
+    const requiredFields = ['username', 'password'];
+    const missing = checkMissing(requiredFields, req.body);
+
+    if (missing.length > 0) {
+        return res.status(400).json({
+            error: 'Missing required fields',
+            missing
+        });
+    }
+
+    const [status, token] = await mongodb.login(req.body);
+    return res.status(status).json({ Bearer: token });
+})
+
+export default router;
