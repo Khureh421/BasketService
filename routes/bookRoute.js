@@ -1,6 +1,7 @@
 import express from 'express';
 
 import * as Book from '../modules/book.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.get('/:id', async (req, res) => {
     return res.status(status).json(books);
 });
 
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
     const [status, message] = await Book.addBook(req.body);
     return res.status(status).json(message);
 })

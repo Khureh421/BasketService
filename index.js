@@ -14,7 +14,7 @@ app.get('/', async (req, res) => {
     return res.status(200).json();
 });
 
-app.use('/api/user', userRoute);
+app.use('/api/users', userRoute);
 app.use('/api/baskets', basketRoute);
 app.use('/api/books', bookRoute);
 

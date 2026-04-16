@@ -49,9 +49,9 @@ export async function createLogin(DB, COLLECTION, data) {
         }
 
         const doc = {
-            uuid: await getNextSequence('userId', db),
+            user_id: await getNextSequence('userId', db),
             username: data.username,
-            password: await bcrypt.hash(data.password, 10)
+            hashed_password: await bcrypt.hash(data.password, 10)
         }
 
         await collection.insertOne(doc);
@@ -74,9 +74,9 @@ export async function login(DB, COLLECTION, data) {
         const doc = await collection.findOne({ username: data.username });
 
         if (doc) {
-            if (await bcrypt.compare(data.password, doc.password)) {
+            if (await bcrypt.compare(data.password, doc.hashed_password)) {
 
-                const token = authenticateLogin(doc.userId, doc.username);
+                const token = authenticateLogin(doc.user_id, doc.username, doc.first_name, doc.last_name);
                 return [200, token];
             }
             return [401, 'Unauthorized'];
@@ -124,15 +124,15 @@ export async function getDoc(DB, COLLECTION, data) {
         const db = client.db(DB);
         const collection = db.collection(COLLECTION);
 
-        const query = Object.fromEntries(
-            Object.entries(data).map(([key, value]) => {
-                if (key === 'id') return [key, new ObjectId(value)];
-                return [key, { $regex: value, $options: 'i' }];
-            }).filter(Boolean)
-        );
+        // const query = Object.fromEntries(
+        //     Object.entries(data).map(([key, value]) => {
+        //         if (key === 'id') return [key, new ObjectId(value)];
+        //         return [key, { $regex: value, $options: 'i' }];
+        //     }).filter(Boolean)
+        // );
 
-        const books = await collection.find(query).toArray();
-        return [200, books];
+        const docs = await collection.find(data).toArray();
+        return [200, docs];
     } catch (error) {
         console.error(error);
         return [500, error];

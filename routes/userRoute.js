@@ -11,7 +11,7 @@ function checkMissing(requiredFields, body) {
 }
 
 router.post('/register', async (req, res) => {
-    const requiredFields = ['username', 'password'];
+    const requiredFields = ['username', 'password', 'first_name', 'last_name'];
     const missing = checkMissing(requiredFields, req.body);
 
     if (missing.length > 0) {
@@ -38,6 +38,21 @@ router.post('/login', async (req, res) => {
 
     const [status, token] = await mongodb.login(DB, COLLECTION, req.body);
     return res.status(status).json({ Bearer: token });
+})
+
+router.get('/', async (req, res) => {
+    const [status, users] = await mongodb.getDoc(DB, COLLECTION)
+    return res.status(status).json(users)
+})
+
+router.get('/:id', async (req, res) => {
+    const [status, user] = await mongodb.getDoc(DB, COLLECTION, { user_id: Number(req.params.id) });
+    return res.status(status).json(user);
+})
+
+router.delete('/:id', async (req, res) => {
+    const [status, message] = await mongodb.deleteDoc(DB, COLLECTION, { user_id: Number(req.params.id) });
+    return res.status(status).json(message);
 })
 
 export default router;
