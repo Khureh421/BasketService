@@ -51,6 +51,8 @@ export async function createLogin(DB, COLLECTION, data) {
         const doc = {
             user_id: await getNextSequence('userId', db),
             username: data.username,
+            first_name: data.first_name,
+            last_name: data.last_name,
             hashed_password: await bcrypt.hash(data.password, 10)
         }
 
@@ -160,7 +162,18 @@ export async function updateDoc(DB, COLLECTION, data, compare = false) {
                 { $set: data }
             )
         } else {
-            const doc = await collection.findOne({ uuid: String(data.uuid) });
+            const query =
+                data.uuid
+                    ? { uuid: String(data.uuid) }
+                    : data.user_id
+                        ? { user_id: data.user_id }
+                        : Object.fromEntries(Object.entries(data).slice(0, 1));
+
+            if (!Object.keys(query).length) {
+                throw new Error("No valid search criteria provided");
+            }
+
+            const doc = await collection.findOne(query);
 
             if (!doc) return [404, 'Not found']
 

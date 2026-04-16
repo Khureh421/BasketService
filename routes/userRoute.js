@@ -50,6 +50,11 @@ router.get('/:id', async (req, res) => {
     return res.status(status).json(user);
 })
 
+router.put('/:id', async(req,res) => {
+    const [status, message] = await mongodb.updateDoc(DB, COLLECTION, { user_id: Number(req.params.id), ...req.body });
+    return res.status(status).json(message);
+})
+
 router.delete('/:id', async (req, res) => {
     const [status, message] = await mongodb.deleteDoc(DB, COLLECTION, { user_id: Number(req.params.id) });
     return res.status(status).json(message);
