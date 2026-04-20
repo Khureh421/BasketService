@@ -92,12 +92,16 @@ export async function login(DB, COLLECTION, data) {
     }
 }
 
-export async function createDoc(DB, COLLECTION, data) {
+export async function createDoc(DB, COLLECTION, data, sequence = null) {
     try {
         await client.connect();
 
         const db = client.db(DB);
         const collection = db.collection(COLLECTION);
+
+        data = sequence
+            ? { [sequence]: await getNextSequence(sequence, db), ...data }
+            : data;
 
         const key = Object.keys(data)[0];
 
@@ -105,7 +109,9 @@ export async function createDoc(DB, COLLECTION, data) {
             return [409, 'Already Exist'];
         }
 
-        data = { uuid: getUUID(Object.values(data)[0]), ...data };
+        sequence == null && (data = { uuid: getUUID(Object.values(data)[0]), ...data });
+
+        console.log(data);
 
         await collection.insertOne(data);
         return [201, 'Created'];
