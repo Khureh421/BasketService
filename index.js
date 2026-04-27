@@ -1,3 +1,6 @@
+import 'dotenv/config';
+import { startEureka } from './config/eureka.js';
+
 import express from 'express';
 
 import userRoute from './routes/userRoute.js';
@@ -7,13 +10,14 @@ import orderRoute from './routes/orderRoute.js';
 
 const app = express();
 const port = 3000;
-const router = express.Router();
 
 app.use(express.json());
 
 app.get('/', async (req, res) => {
     return res.status(200).json();
 });
+
+startEureka();
 
 app.use('/api/users', userRoute);
 app.use('/api/baskets', basketRoute);
