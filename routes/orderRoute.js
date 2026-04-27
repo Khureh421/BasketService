@@ -1,4 +1,6 @@
 import express from 'express';
+import { publishOrder } from '../modules/publishOrder.js';
+
 const router = express.Router();
 
 const DB = process.env.BASKET_DB || 'SEN300';
@@ -22,6 +24,10 @@ router.post('/', async (req, res) => {
     }
 
     const [status, message] = await mongodb.createDoc(DB, COLLECTION, req.body, 'orderId');
+
+    if (status == 201) {
+        await publishOrder(req.body);
+    }
 
     return res.status(status).json(message == 'Created' ? 'Order created' : 'Order error');
 })
